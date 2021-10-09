@@ -1,0 +1,224 @@
+* Lenguajes de Programación Grupo 7084
+Correos:
++ Profesor: L. en C.C. Fernando Abigail Galicia Mendoza | fernandogamen@ciencias.unam.mx
++ Ayudante: Alexis Rivas León | alex-rivasl@ciencias.unam.mx
++ Laboratorio: Emiliano Galeana Araujo | galeanaara@ciencias.unam.mx
+
+Curso:
++ Classroom
++ [[https://t.me/joinchat/L0xngv-r02EwYzFh][telegram]]
++ [[https://drive.google.com/drive/u/0/folders/136bZP00WtqWWFJAkZDo7mS-OsAx_B_7zWCc1iZVEvYp3vDKIpuMTPoECgpc_w9RvkkSYJrc8][drive]]
++ [[https://meet.google.com/vhh-hvip-aci?authuser=0&hs=179][Clases]]
++ LP20221-ASUNTO
+
+* Segunda clase
+
++ [X] Anuncios
+  + [X] Asuntos correos
+  + [X] ghc-problemas?
+  + [X] ejercicios extras
+
+** Práctica2
+
+Empezamos con lo que necesitamos.
+
+#+BEGIN_SRC haskell
+module BAE where
+
+import Test.HUnit
+import Data.List
+
+-- | Name. Tipo que representa el nombre de variables.
+type Name = String
+
+-- | BAE. Tipo que representa las funciones aritmetico-booleanas.
+data BAE = V Name 
+         | N Int 
+         | B Bool
+         | Suc BAE
+         | Pre BAE
+         | Plus BAE BAE
+         | Prod BAE BAE
+         | Neg BAE
+         | Conj BAE BAE
+         | Disy BAE BAE
+         | Gt BAE BAE
+         | Lt BAE BAE
+         | Equi BAE BAE
+         | Ift BAE BAE BAE
+         | LetE Name BAE BAE
+
+-- | Sust. Tipo que representa una sustitución sobre BAE.
+type Sust = (Name,BAE)
+#+END_SRC
+
+Ahora necesitamos una forma de imprimir bonito (/instance Show/) y
+comparar (/instance Eq/) cosas de tipo =BAE=. Sintaxis abstracta
+nota 4.
+
+#+BEGIN_SRC haskell
+-- | Instancia de la clase Show para BAE.
+instance Show BAE where
+  show (V s)      = "var[" ++ s ++ "]"
+  show (N x)      = "num[" ++ show x ++ "]"
+  show (B b)      = "bool[" ++ show b ++ "]"
+  show (Plus a b) = "plus(" ++ show a ++ "," ++ show b ")"
+  show _     = error "D:"
+
+-- Plus((Plus () ()) (Neg ())) -> "plus(plus(...),neg(...))"
+
+instance Eq BAE where
+  (==) (V s) (V s') = s == s'
+  (==) (V _) _ = False
+  (==) (N s) (N s') = s == s'
+  (==) (N _) _ = False
+  (==) (B a) (B a') = a == a'
+  (==) (B _) _ = False
+  (==) (Plus a b) (Plus a' b') = a == a' && b == b'
+#+END_SRC
+
+Substution: Regresa la sustitución de BAE. ¿Qué es sustituir?
+
+La operación de sustitución consiste en reemplazar las presencias
+libres de una variable =x= en una expresión =e= por otra expresión
+=e'=. Esta operación se debe definir con sumo cuidado cuidando que
+ninguna presencia libre de una varable se ligue después de aplicar la
+sustitución, en este sentido el mecanismo de sustitución es muy
+similar al empleado en la lógica de predicados de primer orden.
+
+#+BEGIN_SRC haskell
+-- substituion. Función que regresa la sustitución de una BAE.
+substitution :: BAE -> Sust -> BAE
+substitution = error "D:"
+#+END_SRC
+
+Pruebas (provisionales) para substitution.
+
+#+BEGIN_SRC haskell
+subst1 = substitution (Plus (V "x") (N 5)) ("x", N 10)
+--Resultado: Add(N 10) (N 5) ::: NOTA ::: no se toma en cuenta el instance Show
+
+subst2 = substitution (LetE "x" (N 1) (V "x")) ("y", Plus (V "x") (N 5))
+--Resultado: ***Exception: Could not apply the substitucion
+#+END_SRC
+
+Para  poder  hacer una  sustitución  necesitamos  sacar las  variables
+libres...
+
+** TODO
+
+#+BEGIN_SRC haskell
+-- | fv. Función que regresa las  variables libres de una expresión de
+-- BAE.
+fv :: BAE -> [Name]
+fv (V x)      = [x]
+fv (N n)      = []
+fv (B b)      = []
+fv (Plus a b) = fv a `union` fv b
+#+END_SRC
+
+Pruebas (provisionales) para =fv=.
+
+#+BEGIN_SRC haskell
+  fv1 = fv (Plus (V "x") (N 5))
+  --Resultado: ["x"]
+
+  fv2 = fv (LetE "x" 
+                 (N 1) 
+                 (Plus (V "x") (N 3)))
+  --Resultado: []
+
+  -- `union` -> concatena sin repeticiones
+#+END_SRC
+
+*** Semántica dinámica
+
+La semántica dinámica del lenguaje EAB  se dará mediante un sistema de
+transición particular, usando el  estilo llamado semántica operacional
+estructural o de paso pequeño.
+
+- Estados S.
+- Estados iniciales I.
+- Estados finales.
+- Los juicios de transición para expresiones aritméticas.
+- Los juicios de transición para expresiones booleanas.
+- Los juicios de transici ́on para expresiones let.
+
+**** eval1
+
+=EAB -> EAB= tal que =eval1 e = e’= syss =e → e'=.
+
+Plus (N 2) (Suc (N 3))
+
+-> Plus (N 2) (N 4)
+
+->* (N 6)
+--------------------------------------------------------------------------------
+
+Suc (Plus (N 1) (N 2))
+
+#+BEGIN_SRC haskell
+-- | eval1.  Función que implementa  un paso  en la evaluación  de una
+-- expresión de BAE.
+eval1 :: BAE -> BAE
+eval1 (N n)           = (N n)
+eval1 (V x)           = (V x)
+eval1 (B b)           = (B b)
+eval1 (Suc (N n))     = N (n+1)
+eval1 (Suc n)         = Suc (eval1 n)
+eval1 (Ift (B b) t f)
+  | b                 = t
+  | otherwise         = f
+eval1 (Ift b t f)     = Ift (eval1 b) t f
+#+END_SRC
+
+if (2 == 2)
+then "si"
+else "no"
+
+-> 
+if (true)
+then "si"
+else "no"
+
+Pruebas (provisionales) para =eval1=.
+
+#+BEGIN_SRC haskell
+eval1A = eval1 (Plus(N 1) (N 2))
+--Resultado: N[3]
+
+eval1B = eval1 (LetE "x" (N 1) (Plus (V "x") (N 2)))
+--Resultado: Plus(N[1], N[2])
+#+END_SRC
+
+**** evals
+
+=EAB  -> EAB=  tal que  =evals e  = e’=  syss =e  →* e'=  y =e'=  está
+bloqueado.
+
+=evals ((2*6)+true)= debe devolver =12+true=.
+
+#+BEGIN_SRC haskell
+-- | evals.  Función que implementa la  cerradura reflexiva-transitiva
+-- de una evaluación.
+evals :: BAE -> BAE
+#+END_SRC
+
+Pruebas (provisionales) para =evals=.
+
+#+BEGIN_SRC haskell
+evals1 = evals (LetE "x" 
+                     (Plus (N 1) (N 2))
+                     (Equi (V "x") (N 0)))
+--Resultado: B[False]
+
+{-
+-> (Equiv ((Plus (N 1) (N 2))) (N 0))
+
+-> (Equiv (N 3) (N 0))
+
+-> B False
+-}
+evals2 = evals (Plus (Prod (N 2) (N 6)) (B True))
+--Resultado: Add(N[12], B[True])
+#+END_SRC
