@@ -105,7 +105,7 @@ subst2 = substitution (LetE "x" (N 1) (V "x")) ("y", Plus (V "x") (N 5))
 Para  poder  hacer una  sustitución  necesitamos  sacar las  variables
 libres...
 
-** TODO
+** DONE
 
 #+BEGIN_SRC haskell
 -- | fv. Función que regresa las  variables libres de una expresión de
@@ -222,3 +222,80 @@ evals1 = evals (LetE "x"
 evals2 = evals (Plus (Prod (N 2) (N 6)) (B True))
 --Resultado: Add(N[12], B[True])
 #+END_SRC
+
+** DONE ¿Dudas?
+
+Empezamos viendo nuestro nuevo =data=, que tiene los (todos) tipos que
+pueden regresar nuestos programas de =BAE=.
+
+#+BEGIN_SRC haskell
+-- | Type. Type that represents the types of BAE expressions.
+data Type = NAT | BOOL deriving(Show,Eq)
+
+type Dec = (Name, Type)
+type Ctx = [Dec]
+#+END_SRC
+
+Un =Dec= es una tupla con nombres de variables y el tipo al que tienen
+que representar. Y un =Ctx= es una lista de estas tuplas.
+
+*** vt
+
+vt es una función que recibe un contexto, una expresión de =BAE=, y un
+tipo  al que  se  tiene que  evaluar la  expresión,  regresa si  dicha
+expresión se evalúa o no a dicho tipo.
+
+#+BEGIN_SRC haskell
+-- | vt. Function that verifies the type over a BAE expression.
+vt :: Ctx -> BAE -> Type -> Bool
+vt ctx (V v)   t        = error "Implementar"
+vt ctx (N n)   t        = t == NAT
+vt ctx (B b)   t        = t == BOOL
+#+END_SRC
+:un-op:
+#+BEGIN_SRC haskell
+vt ctx (Suc a) NAT      = vt ctx a NAT
+...    (Plus a b) NAT   = ...
+vt _ _ _                = False
+#+END_SRC
+:end:
+
+#+BEGIN_SRC bash
+$ vt [...] (Suc (...)) BOOL
+#+END_SRC
+
+*** eval
+
+Función que evalúa una expresión de BAE  si y solo si está bien tipado
+y no tiene estados bloqueados.
+
+*hint*: usar =vt= para verificar que esté bien tipada la expresión.
+
+#+BEGIN_SRC haskell
+-- eval. Function  that evaluates a  BAE expression iff  is well-typed
+-- and does not have locked states.
+eval :: BAE -> Type -> BAE
+eval e t
+  | vt [] e t = let
+                  e' = evals e
+                in
+                  if e' == e
+                  then error "Estado bloqueado"
+                  else e'
+  | otherwise = error "Mal tipado."
+#+END_SRC
+
+(Plus (B True) (N 12))
+
+(Plus (Suc (N 0)) (N 1)):NAT => N 2
+eval1 = (Plus (N 1) (N 1)) 
+
+BAE: bae
+t: BOOL
+ctx: v:NAT, x:BOOL, y:NAT
+
+vt [v:NAT, x:BOOL, y:NAT] bae BOOL
+
+(Plus (V a):X (N 3):NAT ):NAT => a:NAT
+
+
